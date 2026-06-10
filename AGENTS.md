@@ -11,7 +11,7 @@
     1. Commit the implementation.
     2. Run `npm version patch` for patch releases.
     3. Push `master` and the created tag.
-    4. Verify GitHub Actions and release assets with `gh` CLI.
+    4. Verify GitHub Actions, published release state, and release assets with `gh` CLI.
 - Do not commit generated release artifacts such as `main.js`.
 - Before claiming completion or pushing release work, run fresh verification:
     - `npm audit`
@@ -119,7 +119,7 @@ npm run build
 - Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
 - After the initial release, follow the process to add/update your plugin in the community catalog as required.
-- This repository's release workflow creates draft releases from tags. Verify the draft release and attached assets after pushing a version tag.
+- This repository's release workflow creates published releases from tags. Verify the release and attached assets after pushing a version tag.
 
 ## Security, privacy, and compliance
 
