@@ -2,14 +2,13 @@ import { Notice, Plugin } from 'obsidian';
 import { getTargetDate } from './date';
 import { getExistingDailyNote } from './daily-notes';
 import { getEnabledFieldKeys } from './fields';
+import { ObsidianJsonHttpClient } from './http';
 import {
 	GoogleHealthNotConnectedError,
 	GoogleHealthProvider,
 	type HealthDataProvider,
 } from './provider';
-import {
-	DailyVitalsSettingTab,
-} from './settings';
+import { DailyVitalsSettingTab } from './settings';
 import { mergeSettings, type DailyVitalsSettings } from './settings-data';
 import { syncDate, type SyncResult } from './sync';
 
@@ -19,6 +18,10 @@ export default class DailyVitalsPlugin extends Plugin {
 
 	async onload() {
 		await this.loadSettings();
+		this.provider = new GoogleHealthProvider(this.settings, () =>
+			this.saveSettings(),
+			new ObsidianJsonHttpClient(),
+		);
 
 		this.addCommand({
 			id: 'sync-yesterday-now',
@@ -54,6 +57,10 @@ export default class DailyVitalsPlugin extends Plugin {
 	async loadSettings() {
 		this.settings = mergeSettings(
 			(await this.loadData()) as Partial<DailyVitalsSettings> | null,
+		);
+		this.provider = new GoogleHealthProvider(this.settings, () =>
+			this.saveSettings(),
+			new ObsidianJsonHttpClient(),
 		);
 	}
 

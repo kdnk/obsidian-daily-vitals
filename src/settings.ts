@@ -76,6 +76,22 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl)
+			.setName('Backfill days')
+			.setDesc('Maximum past days to check when backfilling existing notes.')
+			.addText((text) =>
+				text
+					.setPlaceholder('30')
+					.setValue(String(this.plugin.settings.backfillDays))
+					.onChange(async (value) => {
+						const parsed = Number(value);
+						if (Number.isInteger(parsed) && parsed > 0) {
+							this.plugin.settings.backfillDays = parsed;
+							await this.plugin.saveSettings();
+						}
+					}),
+			);
+
+		new Setting(containerEl)
 			.setName('Daily note folder')
 			.setDesc('Folder containing daily notes. Leave empty for the vault root.')
 			.addText((text) =>
@@ -97,6 +113,76 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings.dailyNoteFormat)
 					.onChange(async (value) => {
 						this.plugin.settings.dailyNoteFormat = value.trim() || 'YYYY-MM-DD';
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl).setName('Google health').setHeading();
+
+		new Setting(containerEl)
+			.setName('Google client ID')
+			.setDesc('Google cloud client ID for Google health API access.')
+			.addText((text) =>
+				text
+					.setPlaceholder('Client ID')
+					.setValue(this.plugin.settings.googleHealth.clientId)
+					.onChange(async (value) => {
+						this.plugin.settings.googleHealth.clientId = value.trim();
+						await this.plugin.saveSettings();
+					}),
+			);
+
+		new Setting(containerEl)
+			.setName('Google client secret')
+			.setDesc('Google cloud client secret for token refresh.')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text
+					.setPlaceholder('Client secret')
+					.setValue(this.plugin.settings.googleHealth.clientSecret)
+					.onChange(async (value) => {
+						this.plugin.settings.googleHealth.clientSecret = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Refresh token')
+			.setDesc('Long-lived refresh token from the Google authorization flow.')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text
+					.setPlaceholder('Refresh token')
+					.setValue(this.plugin.settings.googleHealth.refreshToken)
+					.onChange(async (value) => {
+						this.plugin.settings.googleHealth.refreshToken = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Access token')
+			.setDesc('Optional short-lived token. Refresh token is preferred.')
+			.addText((text) => {
+				text.inputEl.type = 'password';
+				text
+					.setPlaceholder('Access token')
+					.setValue(this.plugin.settings.googleHealth.accessToken)
+					.onChange(async (value) => {
+						this.plugin.settings.googleHealth.accessToken = value.trim();
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName('Access token expires at')
+			.setDesc('Timestamp used to decide when to refresh the access token.')
+			.addText((text) =>
+				text
+					.setPlaceholder('2026-06-10T08:30:00.000Z')
+					.setValue(this.plugin.settings.googleHealth.accessTokenExpiresAt)
+					.onChange(async (value) => {
+						this.plugin.settings.googleHealth.accessTokenExpiresAt = value.trim();
 						await this.plugin.saveSettings();
 					}),
 			);
