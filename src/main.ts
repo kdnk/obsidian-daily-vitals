@@ -1,114 +1,137 @@
+import { Notice, Plugin } from 'obsidian';
+import { getTargetDate } from './date';
+import { getExistingDailyNote } from './daily-notes';
+import { getEnabledFieldKeys } from './fields';
 import {
-	Editor,
-	MarkdownView,
-	MarkdownFileInfo,
-	Modal,
-	Notice,
-	Plugin,
-} from 'obsidian';
+	GoogleHealthNotConnectedError,
+	GoogleHealthProvider,
+	type HealthDataProvider,
+} from './provider';
 import {
-	DEFAULT_SETTINGS,
-	MyPluginSettings,
-	SampleSettingTab,
+	DailyVitalsSettingTab,
 } from './settings';
+import { mergeSettings, type DailyVitalsSettings } from './settings-data';
+import { syncDate, type SyncResult } from './sync';
 
-// Remember to rename these classes and interfaces!
-
-export default class MyPlugin extends Plugin {
-	settings!: MyPluginSettings;
+export default class DailyVitalsPlugin extends Plugin {
+	settings!: DailyVitalsSettings;
+	private provider: HealthDataProvider = new GoogleHealthProvider();
 
 	async onload() {
 		await this.loadSettings();
 
-		// This creates an icon in the left ribbon.
-		this.addRibbonIcon('dice', 'Sample', (_evt: MouseEvent) => {
-			// Called when the user clicks the icon.
-			new Notice('This is a notice!');
-		});
-
-		// This adds a status bar item to the bottom of the app. Does not work on mobile apps.
-		const statusBarItemEl = this.addStatusBarItem();
-		statusBarItemEl.setText('Status bar text');
-
-		// This adds a simple command that can be triggered anywhere
 		this.addCommand({
-			id: 'open-modal-simple',
-			name: 'Open modal (simple)',
+			id: 'sync-yesterday-now',
+			name: 'Sync yesterday now',
 			callback: () => {
-				new SampleModal(this.app).open();
+				void this.syncYesterday(true);
 			},
 		});
-		// This adds an editor command that can perform some operation on the current editor instance
+
 		this.addCommand({
-			id: 'replace-selected',
-			name: 'Replace selected content',
-			editorCallback: (
-				editor: Editor,
-				_ctx: MarkdownView | MarkdownFileInfo,
-			) => {
-				editor.replaceSelection('Sample editor command');
-			},
-		});
-		// This adds a complex command that can check whether the current state of the app allows execution of the command
-		this.addCommand({
-			id: 'open-modal-complex',
-			name: 'Open modal (complex)',
-			checkCallback: (checking: boolean) => {
-				// Conditions to check
-				const markdownView =
-					this.app.workspace.getActiveViewOfType(MarkdownView);
-				if (markdownView) {
-					// If checking is true, we're simply "checking" if the command can be run.
-					// If checking is false, then we want to actually perform the operation.
-					if (!checking) {
-						new SampleModal(this.app).open();
-					}
-
-					// This command will only show up in Command Palette when the check function returns true
-					return true;
-				}
-				return false;
+			id: 'backfill-existing-notes',
+			name: 'Backfill existing notes',
+			callback: () => {
+				void this.backfillExistingNotes();
 			},
 		});
 
-		// This adds a settings tab so the user can configure various aspects of the plugin
-		this.addSettingTab(new SampleSettingTab(this.app, this));
+		this.addSettingTab(new DailyVitalsSettingTab(this.app, this));
 
-		// If the plugin hooks up any global DOM events (on parts of the app that doesn't belong to this plugin)
-		// Using this function will automatically remove the event listener when this plugin is disabled.
-		this.registerDomEvent(activeDocument, 'click', (_evt: MouseEvent) => {
-			new Notice('Click');
+		this.app.workspace.onLayoutReady(() => {
+			if (!this.settings.autoSyncOnStartup) {
+				return;
+			}
+
+			const timeoutId = window.setTimeout(() => {
+				void this.syncYesterday(false);
+			}, this.settings.syncDelaySeconds * 1000);
+
+			this.register(() => window.clearTimeout(timeoutId));
 		});
-
-		// When registering intervals, this function will automatically clear the interval when the plugin is disabled.
-		this.registerInterval(
-			window.setInterval(() => console.log('setInterval'), 5 * 60 * 1000),
-		);
 	}
 
-	onunload() {}
-
 	async loadSettings() {
-		this.settings = Object.assign(
-			{},
-			DEFAULT_SETTINGS,
-			(await this.loadData()) as Partial<MyPluginSettings>,
+		this.settings = mergeSettings(
+			(await this.loadData()) as Partial<DailyVitalsSettings> | null,
 		);
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
 	}
-}
 
-class SampleModal extends Modal {
-	onOpen() {
-		const { contentEl } = this;
-		contentEl.setText('Woah!');
+	async syncYesterday(showSuccessNotice: boolean): Promise<SyncResult | null> {
+		const targetDate = getTargetDate(new Date(), this.settings.targetOffsetDays);
+		return await this.syncSingleDate(targetDate, showSuccessNotice);
 	}
 
-	onClose() {
-		const { contentEl } = this;
-		contentEl.empty();
+	private async backfillExistingNotes(): Promise<void> {
+		try {
+			const enabledFields = getEnabledFieldKeys(this.settings.enabledFields);
+			const dates = await this.provider.listAvailableDates(enabledFields);
+			let syncedCount = 0;
+
+			for (const date of dates) {
+				const result = await this.syncSingleDate(new Date(`${date}T00:00:00`), false);
+				if (result?.status === 'synced') {
+					syncedCount += 1;
+				}
+			}
+
+			new Notice(`Daily Vitals backfill complete. Synced ${syncedCount} notes.`);
+		} catch (error) {
+			this.showSyncError(error);
+		}
+	}
+
+	private async syncSingleDate(
+		date: Date,
+		showSuccessNotice: boolean,
+	): Promise<SyncResult | null> {
+		try {
+			const result = await syncDate({
+				date,
+				settings: this.settings,
+				getDailyNote: (targetDate, settings) =>
+					getExistingDailyNote(this.app.vault, targetDate, settings),
+				processFrontMatter: (file, callback) =>
+					this.app.fileManager.processFrontMatter(file as never, callback),
+				provider: this.provider,
+				now: () => new Date(),
+			});
+
+			this.showSyncResult(result, showSuccessNotice);
+			return result;
+		} catch (error) {
+			this.showSyncError(error);
+			return null;
+		}
+	}
+
+	private showSyncResult(result: SyncResult, showSuccessNotice: boolean): void {
+		if (result.status === 'synced') {
+			if (showSuccessNotice) {
+				new Notice(`Daily Vitals synced ${result.date}.`);
+			}
+			return;
+		}
+
+		if (result.reason === 'daily-note-not-found') {
+			new Notice(`Daily Note for ${result.date} not found. Skipped.`);
+			return;
+		}
+
+		new Notice('Daily vitals has no enabled fields. Skipped.');
+	}
+
+	private showSyncError(error: unknown): void {
+		if (error instanceof GoogleHealthNotConnectedError) {
+			new Notice('Connect your Google health account before syncing daily vitals.');
+			return;
+		}
+
+		new Notice('Daily vitals could not update frontmatter. Skipped.');
+		console.error(error);
 	}
 }

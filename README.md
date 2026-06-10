@@ -1,92 +1,72 @@
-# Obsidian Sample Plugin
+# Daily Vitals
 
-This is a sample plugin for Obsidian (https://obsidian.md).
+Daily Vitals syncs Google Health metrics into your Obsidian Daily Notes frontmatter.
 
-This project uses TypeScript to provide type checking and documentation.
-The repo depends on the latest plugin API (obsidian.d.ts) in TypeScript Definition format, which contains TSDoc comments describing what it does.
+By default, it automatically syncs yesterday's health data when Obsidian starts. If the matching Daily Note does not exist, nothing is created.
 
-This sample plugin demonstrates some of the basic functionality the plugin API can do.
+Daily Vitals only updates enabled frontmatter fields. It never modifies note body content and never deletes existing fields.
 
-- Adds a ribbon icon, which shows a Notice when clicked.
-- Adds a command "Open modal (simple)" which opens a Modal.
-- Adds a plugin setting tab to the settings page.
-- Registers a global click event and outputs a Notice on click.
-- Registers a global interval which logs 'setInterval' to the console.
+## Current status
 
-## First time developing plugins?
+The plugin implements the Daily Note lookup, field selection, frontmatter update behavior, startup sync, manual sync command, backfill command, and settings UI.
 
-Quick starting guide for new plugin devs:
+Google Health account connection and data fetching are represented by an internal provider boundary. Until the provider is connected to a real Google Health integration, sync commands show a notice asking you to connect your Google Health account.
 
-- Check if [someone already developed a plugin for what you want](https://obsidian.md/plugins)! There might be an existing plugin similar enough that you can partner up with.
-- Make a copy of this repo as a template with the "Use this template" button (login to GitHub if you don't see it).
-- Clone your repo to a local development folder. For convenience, you can place this folder in your `.obsidian/plugins/your-plugin-name` folder.
-- Install NodeJS, then run `npm i` in the command line under your repo folder.
-- Run `npm run dev` to compile your plugin from `src/main.ts` to `main.js`.
-- Make changes to `src/main.ts` (or create new `.ts` files). Those changes should be automatically compiled into `main.js`.
-- Reload Obsidian to load the new version of your plugin.
-- Enable plugin in settings window.
-- For updates to the Obsidian API run `npm update` in the command line under your repo folder.
+## Commands
 
-## Releasing new releases
+- **Daily Vitals: Sync yesterday now**
+- **Daily Vitals: Backfill existing notes**
 
-- Update your `manifest.json` with your new version number, such as `1.0.1`, and the minimum Obsidian version required for your latest release.
-- Update your `versions.json` file with `"new-plugin-version": "minimum-obsidian-version"` so older versions of Obsidian can download an older version of your plugin that's compatible.
-- Create new GitHub release using your new version number as the "Tag version". Use the exact version number, don't include a prefix `v`. See here for an example: https://github.com/obsidianmd/obsidian-sample-plugin/releases
-- Upload the files `manifest.json`, `main.js`, `styles.css` as binary attachments. Note: The manifest.json file must be in two places, first the root path of your repository and also in the release.
-- Publish the release.
+## Synced fields
 
-> You can simplify the version bump process by running `npm version patch`, `npm version minor` or `npm version major` after updating `minAppVersion` manually in `manifest.json`.
-> The command will bump version in `manifest.json` and `package.json`, and add the entry for the new version to `versions.json`
+Daily Vitals writes flat frontmatter fields with the `daily_vitals_` prefix.
 
-## Adding your plugin to the community plugin list
+Default enabled fields:
 
-- Check the [plugin guidelines](https://docs.obsidian.md/Plugins/Releasing/Plugin+guidelines).
-- Publish an initial version.
-- Make sure you have a `README.md` file in the root of your repo.
-- Make a pull request at https://github.com/obsidianmd/obsidian-releases to add your plugin.
+- `daily_vitals_date`
+- `daily_vitals_synced_at`
+- `daily_vitals_steps`
+- `daily_vitals_sleep_minutes`
+- `daily_vitals_resting_heart_rate`
 
-## How to use
+Default disabled fields:
 
-- Clone this repo.
-- Make sure your NodeJS is at least v18 (`node --version`).
-- `npm i` to install dependencies.
-- `npm run dev` to start compilation in watch mode.
+- `daily_vitals_source`
+- `daily_vitals_active_calories`
 
-## Manually installing the plugin
+Disabled fields are ignored during sync. They are not fetched, written, updated, or removed from existing notes.
 
-- Copy over `main.js`, `styles.css`, `manifest.json` to your vault `VaultFolder/.obsidian/plugins/your-plugin-id/`.
+## Settings
 
-## Improve code quality with eslint
+- **Auto sync on startup**
+- **Startup sync delay**
+- **Target offset days**
+- **Daily Note folder**
+- **Daily Note format**
+- **Enabled fields**
 
-- [ESLint](https://eslint.org/) is a tool that analyzes your code to quickly find problems. You can run ESLint against your plugin to find common bugs and ways to improve your code.
-- This project already has eslint preconfigured, you can invoke a check by running`npm run lint`
-- Together with a custom eslint [plugin](https://github.com/obsidianmd/eslint-plugin) for Obsidan specific code guidelines.
-- A GitHub action is preconfigured to automatically lint every commit on all branches.
+## Development
 
-## Funding URL
+Install dependencies:
 
-You can include funding URLs where people who use your plugin can financially support it.
-
-The simple way is to set the `fundingUrl` field to your link in your `manifest.json` file:
-
-```json
-{
-	"fundingUrl": "https://buymeacoffee.com"
-}
+```bash
+npm install
 ```
 
-If you have multiple URLs, you can also do:
+Run tests:
 
-```json
-{
-	"fundingUrl": {
-		"Buy Me a Coffee": "https://buymeacoffee.com",
-		"GitHub Sponsor": "https://github.com/sponsors",
-		"Patreon": "https://www.patreon.com/"
-	}
-}
+```bash
+npm test
 ```
 
-## API Documentation
+Run lint:
 
-See https://docs.obsidian.md
+```bash
+npm run lint
+```
+
+Build:
+
+```bash
+npm run build
+```
