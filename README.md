@@ -8,29 +8,20 @@ Daily Vitals only updates enabled frontmatter fields. It never modifies note bod
 
 ## Google Health setup
 
-Daily Vitals reads Google Health API data using OAuth 2.0.
+Daily Vitals reads Google Health API data using OAuth 2.0. The connection flow opens your system browser and listens on a local callback URL, so this plugin is desktop-only.
 
-Create a Google Cloud project, enable the Google Health API, and create an OAuth client. Grant these readonly scopes for the fields you want to sync:
+Create a Google Cloud project, enable the Google Health API, and create a desktop OAuth client. Grant these readonly scopes for the fields you want to sync:
 
 - `https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly`
 - `https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly`
 - `https://www.googleapis.com/auth/googlehealth.sleep.readonly`
 
-The quickest setup path is Google's OAuth 2.0 Playground:
-
-1. Open OAuth 2.0 Playground.
-2. Select **OAuth 2.0 Configuration**.
-3. Enable **Use your own OAuth credentials**.
-4. Enter your OAuth client ID and client secret.
-5. Authorize the Google Health API scopes above.
-6. Exchange the authorization code for tokens.
-7. Copy the refresh token into Daily Vitals settings.
-
 In Obsidian, open **Settings -> Daily Vitals** and fill:
 
-- **OAuth client ID**
-- **OAuth client secret**
-- **Refresh token**
+- **Google client ID**
+- **Google client secret** if your client has one
+
+Then select **Connect** or run **Daily Vitals: Connect Google health** from the command palette. Daily Vitals opens Google consent in your browser, receives the local callback, and stores the refresh token.
 
 Daily Vitals refreshes short-lived access tokens automatically when a refresh token is configured.
 
@@ -38,6 +29,7 @@ Daily Vitals refreshes short-lived access tokens automatically when a refresh to
 
 - **Daily Vitals: Sync yesterday now**
 - **Daily Vitals: Backfill existing notes**
+- **Daily Vitals: Connect Google health**
 
 ## Synced fields
 
@@ -66,8 +58,8 @@ Disabled fields are ignored during sync. They are not fetched, written, updated,
 - **Backfill days**
 - **Daily Note folder**
 - **Daily Note format**
-- **OAuth client ID**
-- **OAuth client secret**
+- **Google client ID**
+- **Google client secret**
 - **Refresh token**
 - **Access token**
 - **Access token expires at**

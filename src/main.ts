@@ -3,9 +3,11 @@ import { getTargetDate } from './date';
 import { getExistingDailyNote } from './daily-notes';
 import { getEnabledFieldKeys } from './fields';
 import { ObsidianJsonHttpClient } from './http';
+import { connectGoogleHealthAccount } from './oauth';
 import {
 	GoogleHealthNotConnectedError,
 	GoogleHealthProvider,
+	GoogleHealthRequestError,
 	type HealthDataProvider,
 } from './provider';
 import { DailyVitalsSettingTab } from './settings';
@@ -15,13 +17,22 @@ import { syncDate, type SyncResult } from './sync';
 export default class DailyVitalsPlugin extends Plugin {
 	settings!: DailyVitalsSettings;
 	private provider: HealthDataProvider = new GoogleHealthProvider();
+	private readonly http = new ObsidianJsonHttpClient();
 
 	async onload() {
 		await this.loadSettings();
 		this.provider = new GoogleHealthProvider(this.settings, () =>
 			this.saveSettings(),
-			new ObsidianJsonHttpClient(),
+			this.http,
 		);
+
+		this.addCommand({
+			id: 'connect-google-health',
+			name: 'Connect Google health',
+			callback: () => {
+				void this.connectGoogleHealth();
+			},
+		});
 
 		this.addCommand({
 			id: 'sync-yesterday-now',
@@ -60,12 +71,25 @@ export default class DailyVitalsPlugin extends Plugin {
 		);
 		this.provider = new GoogleHealthProvider(this.settings, () =>
 			this.saveSettings(),
-			new ObsidianJsonHttpClient(),
+			this.http,
 		);
 	}
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+	}
+
+	async connectGoogleHealth(): Promise<void> {
+		try {
+			await connectGoogleHealthAccount({
+				settings: this.settings,
+				saveSettings: () => this.saveSettings(),
+				http: this.http,
+			});
+			new Notice('Daily vitals connected to Google health.');
+		} catch (error) {
+			this.showSyncError(error);
+		}
 	}
 
 	async syncYesterday(showSuccessNotice: boolean): Promise<SyncResult | null> {
@@ -134,7 +158,12 @@ export default class DailyVitalsPlugin extends Plugin {
 
 	private showSyncError(error: unknown): void {
 		if (error instanceof GoogleHealthNotConnectedError) {
-			new Notice('Connect your Google health account before syncing daily vitals.');
+			new Notice('Enter a Google client ID, then connect Google health.');
+			return;
+		}
+
+		if (error instanceof GoogleHealthRequestError) {
+			new Notice(error.message);
 			return;
 		}
 

@@ -202,18 +202,22 @@ export class GoogleHealthProvider implements HealthDataProvider {
 			}
 			throw new GoogleHealthNotConnectedError();
 		}
-		if (!googleHealth.clientId || !googleHealth.clientSecret) {
+		if (!googleHealth.clientId) {
 			throw new GoogleHealthNotConnectedError();
+		}
+
+		const body: Record<string, string> = {
+			client_id: googleHealth.clientId,
+			refresh_token: googleHealth.refreshToken,
+			grant_type: 'refresh_token',
+		};
+		if (googleHealth.clientSecret) {
+			body.client_secret = googleHealth.clientSecret;
 		}
 
 		const response = (await this.http.postJson(
 			'https://oauth2.googleapis.com/token',
-			{
-				client_id: googleHealth.clientId,
-				client_secret: googleHealth.clientSecret,
-				refresh_token: googleHealth.refreshToken,
-				grant_type: 'refresh_token',
-			},
+			body,
 			undefined,
 		)) as GoogleTokenResponse;
 

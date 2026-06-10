@@ -5,6 +5,7 @@ import type { DailyVitalsSettings } from './settings-data';
 export interface DailyVitalsSettingsHost {
 	settings: DailyVitalsSettings;
 	saveSettings(): Promise<void>;
+	connectGoogleHealth?(): Promise<void>;
 }
 
 const FIELD_LABELS: Record<DailyVitalsFieldKey, string> = {
@@ -121,7 +122,7 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Google client ID')
-			.setDesc('Google cloud client ID for Google health API access.')
+			.setDesc('Google cloud desktop client ID for Google health API access.')
 			.addText((text) =>
 				text
 					.setPlaceholder('Client ID')
@@ -134,7 +135,7 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName('Google client secret')
-			.setDesc('Google cloud client secret for token refresh.')
+			.setDesc('Optional client secret. Desktop clients can leave this empty.')
 			.addText((text) => {
 				text.inputEl.type = 'password';
 				text
@@ -147,8 +148,21 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
+			.setName('Connect Google health')
+			.setDesc('Open Google consent in your browser and store refresh tokens.')
+			.addButton((button) =>
+				button
+					.setButtonText('Connect')
+					.setCta()
+					.onClick(async () => {
+						await this.plugin.connectGoogleHealth?.();
+						this.display();
+					}),
+			);
+
+		new Setting(containerEl)
 			.setName('Refresh token')
-			.setDesc('Long-lived refresh token from the Google authorization flow.')
+			.setDesc('Long-lived token saved after connecting Google health.')
 			.addText((text) => {
 				text.inputEl.type = 'password';
 				text

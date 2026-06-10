@@ -4,5 +4,5 @@
 	"version": "1.0.3",
 	"minAppVersion": "1.4.4",
 	"description": "Sync Google Health data into your Obsidian Daily Notes frontmatter.",
-	"isDesktopOnly": false
+	"isDesktopOnly": true
 }

@@ -77,6 +77,42 @@ describe('GoogleHealthProvider', () => {
 		);
 	});
 
+	it('refreshes a token without a client secret for desktop Google clients', async () => {
+		const settings = makeSettings({
+			clientId: 'client-id',
+			refreshToken: 'refresh-token',
+			accessToken: 'old-token',
+			accessTokenExpiresAt: '2026-06-10T00:00:00.000Z',
+		});
+		const postJson = vi
+			.fn()
+			.mockResolvedValueOnce({
+				access_token: 'new-token',
+				expires_in: 3600,
+			})
+			.mockResolvedValueOnce({
+				rollupDataPoints: [{ steps: { countSum: '8432' } }],
+			});
+
+		const provider = new GoogleHealthProvider(settings, vi.fn(), {
+			getJson: vi.fn(),
+			postJson,
+		}, () => new Date('2026-06-10T07:30:00.000Z'));
+
+		await provider.fetchDailyMetrics('2026-06-09', ['steps']);
+
+		expect(postJson).toHaveBeenNthCalledWith(
+			1,
+			'https://oauth2.googleapis.com/token',
+			{
+				client_id: 'client-id',
+				refresh_token: 'refresh-token',
+				grant_type: 'refresh_token',
+			},
+			undefined,
+		);
+	});
+
 	it('maps enabled Google Health metrics into Daily Vitals metrics', async () => {
 		const settings = makeSettings({
 			accessToken: 'access-token',
