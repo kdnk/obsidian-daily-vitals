@@ -1,7 +1,7 @@
 {
 	"id": "obsidian-daily-vitals",
 	"name": "Daily Vitals",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "1.4.4",
 	"description": "Sync Google Health data into your Obsidian Daily Notes frontmatter.",
 	"isDesktopOnly": false
