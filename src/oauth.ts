@@ -1,5 +1,3 @@
-import { createHash, randomBytes } from 'crypto';
-import { createServer, type Server } from 'http';
 import {
 	GoogleHealthNotConnectedError,
 	GoogleHealthRequestError,
@@ -48,6 +46,31 @@ interface TokenResponse {
 	access_token?: string;
 	refresh_token?: string;
 	expires_in?: number;
+}
+
+interface NodeHttpRequest {
+	url?: string;
+	headers: {
+		host?: string;
+	};
+}
+
+interface NodeHttpResponse {
+	writeHead(statusCode: number, headers?: Record<string, string>): void;
+	end(body?: string): void;
+}
+
+interface NodeHttpServer {
+	once(event: 'error', callback: (error: Error) => void): void;
+	listen(port: number, host: string, callback: () => void): void;
+	address(): { port: number } | string | null;
+	close(): void;
+}
+
+interface NodeHttpModule {
+	createServer(
+		listener: (request: NodeHttpRequest, response: NodeHttpResponse) => void,
+	): NodeHttpServer;
 }
 
 export function buildGoogleHealthAuthUrl(options: BuildAuthUrlOptions): string {
@@ -116,7 +139,7 @@ export async function connectGoogleHealthAccount(
 
 	const codeVerifier = randomBase64Url(64);
 	const state = randomBase64Url(32);
-	const codeChallenge = sha256Base64Url(codeVerifier);
+	const codeChallenge = await sha256Base64Url(codeVerifier);
 	const callback = await startLoopbackCallback(state);
 	const authUrl = buildGoogleHealthAuthUrl({
 		clientId: googleHealth.clientId,
@@ -143,11 +166,26 @@ export async function connectGoogleHealthAccount(
 }
 
 function randomBase64Url(byteLength: number): string {
-	return randomBytes(byteLength).toString('base64url');
+	const bytes = new Uint8Array(byteLength);
+	window.crypto.getRandomValues(bytes);
+	return bytesToBase64Url(bytes);
 }
 
-function sha256Base64Url(value: string): string {
-	return createHash('sha256').update(value).digest('base64url');
+async function sha256Base64Url(value: string): Promise<string> {
+	const bytes = new TextEncoder().encode(value);
+	const digest = await window.crypto.subtle.digest('SHA-256', bytes);
+	return bytesToBase64Url(new Uint8Array(digest));
+}
+
+function bytesToBase64Url(bytes: Uint8Array): string {
+	let binary = '';
+	for (const byte of bytes) {
+		binary += String.fromCharCode(byte);
+	}
+	return btoa(binary)
+		.replaceAll('+', '-')
+		.replaceAll('/', '_')
+		.replaceAll('=', '');
 }
 
 function startLoopbackCallback(expectedState: string): Promise<{
@@ -157,11 +195,12 @@ function startLoopbackCallback(expectedState: string): Promise<{
 }> {
 	return new Promise((resolve, reject) => {
 		let settled = false;
-		let server: Server;
+		let server: NodeHttpServer;
 		let timeoutId: number;
+		const http = requireNodeHttp();
 
 		const codePromise = new Promise<string>((resolveCode, rejectCode) => {
-			server = createServer((request, response) => {
+			server = http.createServer((request, response) => {
 				const requestUrl = new URL(
 					request.url ?? '/',
 					`http://${request.headers.host ?? CALLBACK_HOST}`,
@@ -203,9 +242,9 @@ function startLoopbackCallback(expectedState: string): Promise<{
 				resolveCode(code);
 			});
 
-				timeoutId = window.setTimeout(() => {
-					rejectCode(new GoogleHealthRequestError('Google OAuth timed out.'));
-				}, AUTH_TIMEOUT_MS);
+			timeoutId = window.setTimeout(() => {
+				rejectCode(new GoogleHealthRequestError('Google OAuth timed out.'));
+			}, AUTH_TIMEOUT_MS);
 		});
 
 		server!.once('error', (error) => {
@@ -223,28 +262,44 @@ function startLoopbackCallback(expectedState: string): Promise<{
 			}
 
 			settled = true;
-				resolve({
-					redirectUri: `http://${CALLBACK_HOST}:${address.port}${CALLBACK_PATH}`,
-					waitForCode: () => codePromise,
-					close: () => {
-						window.clearTimeout(timeoutId!);
-						server!.close();
-					},
-				});
+			resolve({
+				redirectUri: `http://${CALLBACK_HOST}:${address.port}${CALLBACK_PATH}`,
+				waitForCode: () => codePromise,
+				close: () => {
+					window.clearTimeout(timeoutId!);
+					server!.close();
+				},
+			});
 		});
 	});
 }
 
 async function openInSystemBrowser(url: string): Promise<void> {
-	const electronRequire = (window as Window & {
-		require?: (
-			moduleName: 'electron',
-		) => { shell: { openExternal(url: string): Promise<void> } };
-	}).require;
+	const electronRequire = getRuntimeRequire();
 
 	if (!electronRequire) {
 		throw new GoogleHealthRequestError('Could not open the system browser.');
 	}
 
-	await electronRequire('electron').shell.openExternal(url);
+	const electron = electronRequire('electron') as {
+		shell: { openExternal(url: string): Promise<void> };
+	};
+	await electron.shell.openExternal(url);
+}
+
+function requireNodeHttp(): NodeHttpModule {
+	const runtimeRequire = getRuntimeRequire();
+	if (!runtimeRequire) {
+		throw new GoogleHealthRequestError(
+			'Connect Google health from Obsidian desktop.',
+		);
+	}
+
+	return runtimeRequire('http') as NodeHttpModule;
+}
+
+function getRuntimeRequire(): ((moduleName: string) => unknown) | undefined {
+	return (window as Window & {
+		require?: (moduleName: string) => unknown;
+	}).require;
 }

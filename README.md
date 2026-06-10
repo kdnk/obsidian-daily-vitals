@@ -8,7 +8,7 @@ Daily Vitals only updates enabled frontmatter fields. It never modifies note bod
 
 ## Google Health setup
 
-Daily Vitals reads Google Health API data using OAuth 2.0. The connection flow opens your system browser and listens on a local callback URL, so this plugin is desktop-only.
+Daily Vitals reads Google Health API data using OAuth 2.0. The first connection flow opens your system browser and listens on a local callback URL, so connect from Obsidian desktop. After tokens are saved, the plugin can be installed normally on mobile.
 
 Create a Google Cloud project, enable the Google Health API, and create a desktop OAuth client. Grant these readonly scopes for the fields you want to sync:
 
@@ -21,7 +21,7 @@ In Obsidian, open **Settings -> Daily Vitals** and fill:
 - **Google client ID**
 - **Google client secret** if your client has one
 
-Then select **Connect** or run **Daily Vitals: Connect Google health** from the command palette. Daily Vitals opens Google consent in your browser, receives the local callback, and stores the refresh token.
+On Obsidian desktop, select **Connect** or run **Daily Vitals: Connect Google health** from the command palette. Daily Vitals opens Google consent in your browser, receives the local callback, and stores the refresh token.
 
 Daily Vitals refreshes short-lived access tokens automatically when a refresh token is configured.
 

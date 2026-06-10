@@ -25,7 +25,7 @@
 - Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian.
 - Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
 - Current behavior: Daily Vitals syncs Google Health data into Obsidian Daily Notes frontmatter.
-- Current platform: desktop-only, because Google OAuth uses a system browser and local loopback callback.
+- Current platform: installable on desktop and mobile. The Google OAuth connection flow itself requires Obsidian desktop because it uses a system browser and local loopback callback.
 
 ## Environment & tooling
 
@@ -171,7 +171,7 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 - Request only readonly Google Health scopes needed by enabled metrics.
 - Store refresh/access tokens via plugin settings data and refresh access tokens automatically.
 - Client secret is optional for desktop clients; do not require it unless the current Google client needs it.
-- If OAuth behavior changes, update both README and the settings-tab setup guidance.
+- If OAuth behavior changes, update README, manifest compatibility, and the settings-tab setup guidance together.
 
 ## Mobile
 
