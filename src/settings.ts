@@ -1,5 +1,9 @@
 import { App, PluginSettingTab, Setting } from 'obsidian';
 import type { DailyVitalsFieldKey } from './fields';
+import {
+	GOOGLE_API_SETUP_STEPS,
+	GOOGLE_API_SETUP_SUMMARY,
+} from './google-api-setup';
 import type { DailyVitalsSettings } from './settings-data';
 
 export interface DailyVitalsSettingsHost {
@@ -119,6 +123,19 @@ export class DailyVitalsSettingTab extends PluginSettingTab {
 			);
 
 		new Setting(containerEl).setName('Google health').setHeading();
+
+		new Setting(containerEl)
+			.setName('Google API setup')
+			.setDesc(createFragment((fragment) => {
+				fragment.appendText(GOOGLE_API_SETUP_SUMMARY);
+				const list = fragment.createEl('ol');
+				for (const step of GOOGLE_API_SETUP_STEPS) {
+					list.createEl('li', { text: step });
+				}
+				fragment.createEl('p', {
+					text: 'Enter the client secret only when Google cloud shows one.',
+				});
+			}));
 
 		new Setting(containerEl)
 			.setName('Google client ID')

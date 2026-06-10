@@ -1,10 +1,31 @@
 # Obsidian community plugin
 
+## Repository-specific agent instructions
+
+- Before git operations, confirm whether to use `git` or `but` when the user has not already specified a tool. If the user has already specified one in the active task, keep using that tool consistently.
+- Do not browse GitHub repository URLs directly. Use `gh` CLI for GitHub state, runs, releases, and pull requests.
+- Commit messages must follow Conventional Commits and be written in English.
+- Commit bodies should include clear `Why:` and `What:` sections.
+- The default branch is `master`.
+- This repository releases through the normal npm version flow:
+    1. Commit the implementation.
+    2. Run `npm version patch` for patch releases.
+    3. Push `master` and the created tag.
+    4. Verify GitHub Actions and release assets with `gh` CLI.
+- Do not commit generated release artifacts such as `main.js`.
+- Before claiming completion or pushing release work, run fresh verification:
+    - `npm audit`
+    - `npm test`
+    - `npm run build`
+    - `npm run lint`
+
 ## Project overview
 
 - Target: Obsidian Community Plugin (TypeScript → bundled JavaScript).
 - Entry point: `src/main.ts` compiled to `main.js` and loaded by Obsidian.
 - Required release artifacts: `main.js`, `manifest.json`, and optional `styles.css`.
+- Current behavior: Daily Vitals syncs Google Health data into Obsidian Daily Notes frontmatter.
+- Current platform: desktop-only, because Google OAuth uses a system browser and local loopback callback.
 
 ## Environment & tooling
 
@@ -12,8 +33,6 @@
 - **Package manager: npm** (required for this sample - `package.json` defines npm scripts and dependencies).
 - **Bundler: esbuild** (required for this sample - `esbuild.config.mjs` and build scripts depend on it). Alternative bundlers like Rollup or webpack are acceptable for other projects if they bundle all external dependencies into `main.js`.
 - Types: `obsidian` type definitions.
-
-**Note**: This sample project has specific technical dependencies on npm and esbuild. If you're creating a plugin from scratch, you can choose different tools, but you'll need to replace the build configuration accordingly.
 
 ### Install
 
@@ -43,7 +62,7 @@ npm run build
 
 - **Organize code into multiple files**: Split functionality across separate modules rather than putting everything in `main.ts`.
 - Source lives in `src/`. Keep `main.ts` small and focused on plugin lifecycle (loading, unloading, registering commands).
-- **Example file structure**:
+- Preferred structure:
     ```
     src/
       main.ts           # Plugin entry point, lifecycle management
@@ -62,6 +81,7 @@ npm run build
 - **Do not commit build artifacts**: Never commit `node_modules/`, `main.js`, or other generated files to version control.
 - Keep the plugin small. Avoid large dependencies. Prefer browser-compatible packages.
 - Generated output should be placed at the plugin root or `dist/` depending on your build setup. Release artifacts must end up at the top level of the plugin folder in the vault (`main.js`, `manifest.json`, `styles.css`).
+- Put user-facing setup copy that is tested or reused in small modules, not inline inside lifecycle code.
 
 ## Manifest rules (`manifest.json`)
 
@@ -91,6 +111,7 @@ npm run build
 - If the plugin has configuration, provide a settings tab and sensible defaults.
 - Persist settings using `this.loadData()` / `this.saveData()`.
 - Use stable command IDs; avoid renaming once released.
+- Keep settings copy short. Longer setup guidance belongs in README, with concise in-app steps in the settings tab.
 
 ## Versioning & releases
 
@@ -98,12 +119,14 @@ npm run build
 - Create a GitHub release whose tag exactly matches `manifest.json`'s `version`. Do not use a leading `v`.
 - Attach `manifest.json`, `main.js`, and `styles.css` (if present) to the release as individual assets.
 - After the initial release, follow the process to add/update your plugin in the community catalog as required.
+- This repository's release workflow creates draft releases from tags. Verify the draft release and attached assets after pushing a version tag.
 
 ## Security, privacy, and compliance
 
 Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particular:
 
 - Default to local/offline operation. Only make network requests when essential to the feature.
+- Google Health API requests are essential to sync. Do not add any unrelated network calls.
 - No hidden telemetry. If you collect optional analytics or call third-party services, require explicit opt-in and document clearly in `README.md` and in settings.
 - Never execute remote code, fetch and eval scripts, or auto-update plugin code outside of normal releases.
 - Minimize scope: read/write only what's necessary inside the vault. Do not access files outside the vault.
@@ -136,6 +159,19 @@ Follow Obsidian's **Developer Policies** and **Plugin Guidelines**. In particula
 - Bundle everything into `main.js` (no unbundled runtime deps).
 - Avoid Node/Electron APIs if you want mobile compatibility; set `isDesktopOnly` accordingly.
 - Prefer `async/await` over promise chains; handle errors gracefully.
+- Use Obsidian `requestUrl` for HTTP requests inside plugin code.
+- Use `window.setTimeout` / `window.clearTimeout` for timers.
+- Keep Google OAuth logic isolated from sync logic so token acquisition and data fetching can be tested independently.
+
+## Google Health OAuth
+
+- Use a desktop OAuth client and PKCE for the Google consent flow.
+- Open consent in the system browser, not an embedded browser.
+- Use a local loopback redirect URI for the authorization code callback.
+- Request only readonly Google Health scopes needed by enabled metrics.
+- Store refresh/access tokens via plugin settings data and refresh access tokens automatically.
+- Client secret is optional for desktop clients; do not require it unless the current Google client needs it.
+- If OAuth behavior changes, update both README and the settings-tab setup guidance.
 
 ## Mobile
 
